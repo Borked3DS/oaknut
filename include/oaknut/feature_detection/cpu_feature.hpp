@@ -10,7 +10,7 @@
 #if defined(__cpp_lib_constexpr_bitset) && __cpp_lib_constexpr_bitset >= 202207L
 #    define OAKNUT_CPU_FEATURES_CONSTEXPR constexpr
 #else
-#    define OAKNUT_CPU_FEATURES_CONSTEXPR
+#    define OAKNUT_CPU_FEATURES_CONSTEXPR inline
 #endif
 
 namespace oaknut {
