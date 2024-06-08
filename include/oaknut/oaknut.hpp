@@ -101,7 +101,9 @@ public:
     void ADRL(XReg xd, const void* addr)
     {
         ADRP(xd, addr);
-        ADD(xd, xd, reinterpret_cast<uint64_t>(addr) & 0xFFF);
+        if (reinterpret_cast<uint64_t>(addr) & 0xFFF) {
+            ADD(xd, xd, reinterpret_cast<uint64_t>(addr) & 0xFFF);
+        }
     }
 
     void MOV(WReg wd, uint32_t imm)
