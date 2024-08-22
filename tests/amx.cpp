@@ -98,16 +98,16 @@ TEST_CASE("AMX_memcpy")
     REQUIRE(x_vec == y_vec);
 }
 
-TEST_CASE("AMX_dot16")
+TEST_CASE("AMX_mac16-vector")
 {
     std::array<uint16_t, 32> x_vec;
     std::iota(x_vec.begin(), x_vec.end(), 0);
 
     std::array<uint16_t, 32> y_vec;
-    y_vec.fill(2);
+    y_vec.fill(1);
 
     std::array<uint16_t, 32> z_vec;
-    z_vec.fill(1);
+    z_vec.fill(0);
 
     CodeBlock mem{4096};
     CodeGenerator code{mem.ptr()};
@@ -118,12 +118,13 @@ TEST_CASE("AMX_dot16")
 
     code.AMX_SET();
 
-    // Clear upper byte
+    // Ensure upper byte of addresses are clear
     code.UBFX(X0, X0, 0, 56);
     code.UBFX(X1, X1, 0, 56);
     code.UBFX(X2, X2, 0, 56);
 
-    // Load vectors X and Y
+    // Load vectors X, Y, and Z
+    // 64 bytes of data each
     code.AMX_LDX(X0);
     code.AMX_LDY(X1);
     code.AMX_LDZ(X2);
@@ -152,7 +153,7 @@ TEST_CASE("AMX_dot16")
     // 0	9	Y offset (in bytes)
     code.MOV(X3, 0b1'0'0'0'00000'0000000'00'00000'00'00'00000'00'0'0'0'0'000000'0'000000000'0'000000000);
 
-    // Z[i] += X[i] * Y[i]
+    // Z[i] += X[i] * Y[j]
     code.AMX_MAC16(X3);
 
     // Store Z
@@ -167,10 +168,7 @@ TEST_CASE("AMX_dot16")
 
     dot(x_vec.data(), y_vec.data(), z_vec.data());
 
-    for (const auto& element : z_vec) {
-        std::printf("%u ", element);
-    }
-    std::putchar('\n');
+    REQUIRE(std::equal(x_vec.cbegin(), x_vec.cend(), z_vec.cbegin()));
 }
 
 #endif
