@@ -98,7 +98,7 @@ TEST_CASE("AMX_memcpy")
     REQUIRE(x_vec == y_vec);
 }
 
-TEST_CASE("AMX_dot")
+TEST_CASE("AMX_dot16")
 {
     std::array<uint16_t, 32> x_vec;
     std::iota(x_vec.begin(), x_vec.end(), 0);
@@ -150,10 +150,10 @@ TEST_CASE("AMX_dot")
     // 10	9	X offset (in bytes)
     // 9	1	Ignored
     // 0	9	Y offset (in bytes)
-    code.MOV(X19, 0b1'0'0'0'00000'0000000'00'00000'00'00'00000'00'0'0'0'0'000000'0'000000000'0'000000000);
+    code.MOV(X3, 0b1'0'0'0'00000'0000000'00'00000'00'00'00000'00'0'0'0'0'000000'0'000000000'0'000000000);
 
     // Z[i] += X[i] * Y[i]
-    code.AMX_MAC16(X19);
+    code.AMX_MAC16(X3);
 
     // Store Z
     code.AMX_STZ(X2);
