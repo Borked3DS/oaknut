@@ -114,7 +114,7 @@ TEST_CASE("AMX_mac16-vector")
 
     mem.unprotect();
 
-    auto dot = code.xptr<void (*)(void*, void*, void*)>();
+    auto amx_func = code.xptr<void (*)(void*, void*, void*)>();
 
     code.AMX_SET();
 
@@ -166,7 +166,7 @@ TEST_CASE("AMX_mac16-vector")
     mem.protect();
     mem.invalidate_all();
 
-    dot(x_vec.data(), y_vec.data(), z_vec.data());
+    amx_func(x_vec.data(), y_vec.data(), z_vec.data());
 
     REQUIRE(std::equal(x_vec.cbegin(), x_vec.cend(), z_vec.cbegin()));
 }
@@ -187,7 +187,7 @@ TEST_CASE("AMX_mac16-matrix")
 
     mem.unprotect();
 
-    auto dot = code.xptr<void (*)(void*, void*, void*)>();
+    auto amx_func = code.xptr<void (*)(void*, void*, void*)>();
 
     code.AMX_SET();
 
@@ -239,14 +239,127 @@ TEST_CASE("AMX_mac16-matrix")
     mem.protect();
     mem.invalidate_all();
 
-    dot(x_vec.data(), y_vec.data(), z_vec.data());
-
-    for (const auto& element : z_vec) {
-        std::printf("%u ", element);
-    }
-    std::putchar('\n');
+    amx_func(x_vec.data(), y_vec.data(), z_vec.data());
 
     REQUIRE(std::equal(x_vec.cbegin(), x_vec.cend(), z_vec.cbegin()));
+}
+
+TEST_CASE("AMX_sum32-rgba")
+{
+    constexpr std::uint32_t test_color = 0xaa'bb'cc'dd;
+    // Given 16 32-bit integers, will be able to sum the bytes of each channel
+    // into rows of Z
+    // A proof-of-concept implementation for getting the average color of an image.
+    std::array<uint32_t, 16> x_vec;
+    x_vec.fill(test_color);
+
+    // Four rows of Z
+    std::array<std::array<uint32_t, 16>, 4> z_mat;
+    for (auto& z_vec : z_mat) {
+        z_vec.fill(0);
+    }
+
+    static_assert(sizeof(x_vec) == 64ULL);
+    static_assert(sizeof(z_mat) == 64ULL * 4);
+
+    CodeBlock mem{4096};
+    CodeGenerator code{mem.ptr()};
+
+    mem.unprotect();
+
+    auto amx_func = code.xptr<void (*)(void*, void*)>();
+    {
+        code.AMX_SET();
+
+        // Ensure upper byte of addresses are clear
+        code.UBFX(X0, X0, 0, 56);
+
+        // Load vector X
+        // 64 bytes of data each
+        code.AMX_LDX(X0);
+
+        // Bit  Width
+        // 63	1	Z is signed (1) or unsigned (0)
+        // (47≠4) 63	1	X is signed (1) or unsigned (0)
+        // 58	5	Right shift amount	Ignored when ALU mode in {5, 6}
+        // 57	1	Ignored
+        // 54	3	Must be zero	No-op otherwise
+        // 53	1	Indexed load (1) or regular load (0)
+        // (53=1) 52	1	Ignored
+        // (53=1) 49	3	Register to index into
+        // (53=1) 48	1	Indices are 4 bits (1) or 2 bits (0)
+        // (53=1) 47	1	Indexed load of Y (1) or of X (0)
+        // (53=0) 47	6	ALU mode
+        // 46	1	Ignored
+        // 42	4	Lane width mode	Meaning dependent upon ALU mode
+        // 41	1	Ignored
+        // (31=1) 35	6	Ignored
+        // (31=1) 32	3	Broadcast mode
+        // (31=0) 38	3	Write enable or broadcast mode
+        // (31=0) 32	6	Write enable value or broadcast lane index	Meaning dependent upon associated mode
+        // 31	1	Perform operation for multiple vectors (1) or just one vector (0)	M2 only (always reads as 0 on M1)
+        // (47=4) 30	1	Saturate Z (1) or truncate Z (0)
+        // (47=4) 29	1	Right shift is rounding (1) or truncating (0)
+        // (47≠4) 29	2	X shuffle
+        // 27	2	Y shuffle
+        // (47=4) 26	1	Z saturation is signed (1) or unsigned (0)
+        // (47≠4) 26	1	Y is signed (1) or unsigned (0)
+        // (31=1) 25	1	"Multiple" means four vectors (1) or two vectors (0)	Top two bits of Z row ignored if operating on four vectors
+        // 20	6	Z row	Low bits ignored in some lane width modes When 31=1, top bit or top two bits ignored
+        // 19	1	Ignored
+        // 10	9	X offset (in bytes)
+        // 9	1	Ignored
+        // 0	9	Y offset (in bytes)
+        const uint64_t vec_op =
+            // ALU mode
+            //  0 : f = Z+(X * Y) >> s
+            // 11 : f = Z+(X) >> s (M2 only)
+            ((11ULL) << 47) |
+
+            // Lane width mode:
+            // 10: Z.u32[i] += f(X.u8[i], Y.u8[i])
+            // Produces 64 32-bit integers, requiring 256 bytes of data total!
+            // four rows of Z: interleaved quartet(perfect for RGBA!):
+            // Z0	0	4	8	12	16	20	24	28	32	36	40	44	48	52	56	60 : A
+            // Z1	1	5	9	13	17	21	25	29	33	37	41	45	49	53	57	61 : B
+            // Z2	2	6	10	14	18	22	26	30	34	38	42	46	50	54	58	62 : G
+            // Z3	3	7	11	15	19	23	27	31	35	39	43	47	51	55	59	63 : R
+            ((10ULL) << 42);
+
+        code.MOV(X2, vec_op);
+
+        // Z[_][i] = f(X[i], X[i])
+        code.AMX_VECINT(X2);
+
+        // Store Z
+        // We are writing to four rows of Z, each row having a color-channel
+        // So it will need to be stored four times!
+
+        for (std::size_t z_row = 0; z_row < 4; ++z_row) {
+            code.MOV(X3, z_row);
+            code.ADD(X2, X1, X3, LSL, 6);  // ptr = z_row * 64
+            code.BFI(X2, X3, 56, 8);       // Set z_row to write
+            code.AMX_STZ(X2);
+        }
+
+        code.AMX_CLR();
+
+        code.RET();
+    }
+
+    mem.protect();
+    mem.invalidate_all();
+
+    amx_func(x_vec.data(), z_mat.data());
+
+    for (std::size_t z_row = 0; z_row < 4; ++z_row) {
+        const std::uint8_t expected_sum = static_cast<std::uint8_t>(test_color >> (z_row * 8));
+        for (const auto& z_element : z_mat[z_row]) {
+            REQUIRE(z_element == expected_sum);
+            // std::printf("%02x ", z_element);
+        }
+        // std::putchar('\n');
+    }
 }
 
 #endif
