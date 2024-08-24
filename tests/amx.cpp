@@ -153,7 +153,7 @@ TEST_CASE("AMX_mac16-vector")
     // 0	9	Y offset (in bytes)
     code.MOV(X3, 0b1'0'0'0'00000'0000000'00'00000'00'00'00000'00'0'0'0'0'000000'0'000000000'0'000000000);
 
-    // Z[i] += X[i] * Y[j]
+    // Z[i] += X[i] * Y[i]
     code.AMX_MAC16(X3);
 
     // Store Z
@@ -167,6 +167,84 @@ TEST_CASE("AMX_mac16-vector")
     mem.invalidate_all();
 
     dot(x_vec.data(), y_vec.data(), z_vec.data());
+
+    REQUIRE(std::equal(x_vec.cbegin(), x_vec.cend(), z_vec.cbegin()));
+}
+
+TEST_CASE("AMX_mac16-matrix")
+{
+    std::array<uint16_t, 32> x_vec;
+    std::iota(x_vec.begin(), x_vec.end(), 0);
+
+    std::array<uint16_t, 32> y_vec;
+    y_vec.fill(1);
+
+    std::array<uint16_t, 32> z_vec;
+    z_vec.fill(0);
+
+    CodeBlock mem{4096};
+    CodeGenerator code{mem.ptr()};
+
+    mem.unprotect();
+
+    auto dot = code.xptr<void (*)(void*, void*, void*)>();
+
+    code.AMX_SET();
+
+    // Ensure upper byte of addresses are clear
+    code.UBFX(X0, X0, 0, 56);
+    code.UBFX(X1, X1, 0, 56);
+    code.UBFX(X2, X2, 0, 56);
+
+    // Load vectors X, Y, and Z
+    // 64 bytes of data each
+    code.AMX_LDX(X0);
+    code.AMX_LDY(X1);
+    code.AMX_LDZ(X2);
+
+    // Bit  Width
+    // 63	1	Vector mode (1) or matrix mode (0)
+    // 62	1	Z is i32 (1) or Z is i16 (0)	Ignored in vector mode; Z is always i16 there
+    // 61	1	X is i8 (1) or X is i16 (0)
+    // 60	1	Y is i8 (1) or Y is i16 (0)
+    // 55	5	Right shift amount	Applied to x*y. When zero, sign of x and y inputs is less relevant.
+    // 48	7	Ignored
+    // 46	2	X enable mode
+    // 41	5	X enable value	Meaning dependent upon associated mode
+    // 39	2	Ignored
+    // 37	2	Y enable mode	Ignored in vector mode
+    // 32	5	Y enable value	Ignored in vector mode Meaning dependent upon associated mode
+    // 30	2	Ignored
+    // 29	1	Skip X input (1) or use X input (0)
+    // 28	1	Skip Y input (1) or use Y input (0)
+    // 27	1	Skip Z input (1) or use Z input (0)
+    // 26	1	Ignored
+    // 20	6	Z row	High bits ignored in matrix mode
+    // 19	1	Ignored
+    // 10	9	X offset (in bytes)
+    // 9	1	Ignored
+    // 0	9	Y offset (in bytes)
+    code.MOV(X3, 0b0'0'0'0'00000'0000000'00'00000'00'00'00000'00'0'0'0'0'000000'0'000000000'0'000000000);
+
+    // z[j][i] += x[i] * y[j]
+    code.AMX_MAC16(X3);
+
+    // Store Z
+    code.AMX_STZ(X2);
+
+    code.AMX_CLR();
+
+    code.RET();
+
+    mem.protect();
+    mem.invalidate_all();
+
+    dot(x_vec.data(), y_vec.data(), z_vec.data());
+
+    for (const auto& element : z_vec) {
+        std::printf("%u ", element);
+    }
+    std::putchar('\n');
 
     REQUIRE(std::equal(x_vec.cbegin(), x_vec.cend(), z_vec.cbegin()));
 }
