@@ -2,7 +2,7 @@ on: [push, pull_request]
 
 jobs:
   test_on_ubuntu:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: g++-10 (aarch64)
 
     steps:
@@ -125,7 +125,7 @@ jobs:
         run: cmake --build . --config Release
 
   test_on_freebsd:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: freebsd-arm64
 
     steps:
@@ -149,7 +149,7 @@ jobs:
             ./oaknut-tests -d yes
 
   test_on_openbsd:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: openbsd-arm64
 
     steps:
@@ -172,7 +172,7 @@ jobs:
             ./oaknut-tests -d yes "~[slow]"
 
   test_on_android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: android
 
     steps:
@@ -209,7 +209,7 @@ jobs:
         run: cmake --build . --config Release
 
   x86_64:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: x86_64
 
     steps:
@@ -220,7 +220,7 @@ jobs:
         run: sudo apt-get update
 
       - name: Install dependencies
-        run: sudo apt-get install -q -y ninja-build
+        run: sudo apt-get install -q -y ninja-build gcc-14 g++-14
 
       - name: Checkout Catch2 v3 repo
         uses: actions/checkout@v4
