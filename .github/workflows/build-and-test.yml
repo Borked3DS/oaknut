@@ -7,7 +7,7 @@ jobs:
 
     steps:
       - name: Checkout oaknut repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Update package repositories
         run: sudo apt-get update
@@ -21,10 +21,10 @@ jobs:
           qemu-user
 
       - name: Checkout qemu
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: qemu/qemu
-          ref: v8.1.2
+          ref: v9.1.0
           path: externals/qemu
 
       - name: Build qemu
@@ -37,7 +37,7 @@ jobs:
           make -j4 qemu-aarch64
 
       - name: Checkout Catch2 v3 repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: catchorg/Catch2
           ref: v3.2.0
@@ -68,10 +68,10 @@ jobs:
 
     steps:
       - name: Checkout oaknut repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Checkout Catch2 v3 repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: catchorg/Catch2
           ref: v3.2.0
@@ -99,10 +99,10 @@ jobs:
 
     steps:
       - name: Checkout oaknut repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Checkout Catch2 v3 repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: catchorg/Catch2
           ref: v3.2.0
@@ -130,14 +130,14 @@ jobs:
 
     steps:
       - name: Checkout oaknut repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Build and Test
-        uses: cross-platform-actions/action@v0.19.1
+        uses: cross-platform-actions/action@v0.25.0
         with:
           operating_system: freebsd
           architecture: arm64
-          version: '13.2'
+          version: '14.1'
           shell: bash
           run: |
             pwd
@@ -154,14 +154,14 @@ jobs:
 
     steps:
       - name: Checkout oaknut repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Build and Test
-        uses: cross-platform-actions/action@v0.19.1
+        uses: cross-platform-actions/action@v0.25.0
         with:
           operating_system: openbsd
           architecture: arm64
-          version: '7.3'
+          version: '7.5'
           shell: bash
           run: |
             pwd
@@ -177,7 +177,7 @@ jobs:
 
     steps:
       - name: Checkout oaknut repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Update package repositories
         run: sudo apt-get update
@@ -186,7 +186,7 @@ jobs:
         run: sudo apt-get install -q -y ninja-build
 
       - name: Checkout Catch2 v3 repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: catchorg/Catch2
           ref: v3.2.0
@@ -214,7 +214,7 @@ jobs:
 
     steps:
       - name: Checkout oaknut repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Update package repositories
         run: sudo apt-get update
@@ -223,7 +223,7 @@ jobs:
         run: sudo apt-get install -q -y ninja-build
 
       - name: Checkout Catch2 v3 repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: catchorg/Catch2
           ref: v3.2.0
