@@ -195,7 +195,7 @@ private:
 #include "oaknut/impl/arm64_encode_helpers.inc.hpp"
 
     template<StringLiteral bs, StringLiteral... bargs, typename... Ts>
-    void emit(Ts... args)
+    void emitOp(Ts... args)
     {
         constexpr std::uint32_t base = detail::find<bs, "1">();
         std::uint32_t encoding = (base | ... | encode<detail::find<bs, bargs>()>(std::forward<Ts>(args)));
